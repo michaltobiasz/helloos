@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Ekran startowy Senior OS: duże przyciski, zegar, nic zbędnego.
+"""Ekran startowy: duże przyciski, zegar, nic zbędnego.
+
+Dla seniorów i dla dzieci uczących się obsługi komputera (profil wybiera
+install.sh). Zestaw przycisków jest w słowniku PROFILE poniżej.
 
 Uruchamia się po zalogowaniu na pełnym ekranie. Po zamknięciu programu
 (np. przeglądarki) senior wraca do tego ekranu.
@@ -15,6 +18,7 @@ from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 from PyQt5.QtWidgets import (
     QApplication,
+    QSizePolicy,
     QDialog,
     QGridLayout,
     QHBoxLayout,
@@ -72,17 +76,60 @@ def pomoc():
     return pierwszy_dostepny(["rustdesk"])
 
 
-# (napis, ikona z motywu systemu, kolor, akcja)
-KAFELKI = [
-    ("Internet", "web-browser", "#1565C0", internet),
-    ("Dokumenty", "folder-documents", "#2E7D32",
-     lambda: otworz_folder("DOCUMENTS", "~/Dokumenty")),
-    ("Filmy", "folder-videos", "#6A1B9A", lambda: otworz_folder("VIDEOS", "~/Wideo")),
-    ("Zdjęcia", "folder-pictures", "#E65100",
-     lambda: otworz_folder("PICTURES", "~/Obrazy")),
-    ("Pomoc od rodziny", "preferences-desktop-remote-desktop", "#00838F", pomoc),
-    ("Wyłącz komputer", "system-shutdown", "#B71C1C", None),  # osobne okno pytania
-]
+def notatnik():
+    return pierwszy_dostepny(["xed"], ["mousepad"], ["gedit"])
+
+
+def paint():
+    return pierwszy_dostepny(["pinta"], ["tuxpaint"], ["kolourpaint"])
+
+
+def scratch():
+    # TurboWarp to Scratch działający bez internetu; zapasowo Scratch w przeglądarce.
+    if shutil.which("flatpak") and subprocess.run(
+        ["flatpak", "info", "org.turbowarp.TurboWarp"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ).returncode == 0:
+        return ["flatpak", "run", "org.turbowarp.TurboWarp"]
+    przegladarka = internet()
+    return przegladarka + ["https://scratch.mit.edu/projects/editor/"] if przegladarka else None
+
+
+# nazwa: (napis, ikona z motywu systemu, kolor, akcja)
+WSZYSTKIE = {
+    "internet": ("Internet", "web-browser", "#1565C0", internet),
+    "dokumenty": ("Dokumenty", "folder-documents", "#2E7D32",
+                  lambda: otworz_folder("DOCUMENTS", "~/Dokumenty")),
+    "notatnik": ("Notatnik", "accessories-text-editor", "#455A64", notatnik),
+    "paint": ("Paint", "applications-graphics", "#C2185B", paint),
+    "scratch": ("Scratch", "applications-development", "#EF6C00", scratch),
+    "filmy": ("Filmy", "folder-videos", "#6A1B9A",
+              lambda: otworz_folder("VIDEOS", "~/Wideo")),
+    "zdjecia": ("Zdjęcia", "folder-pictures", "#AD1457",
+                lambda: otworz_folder("PICTURES", "~/Obrazy")),
+    "pomoc": ("Pomoc zdalna", "preferences-desktop-remote-desktop", "#00838F", pomoc),
+    "wylacz": ("Wyłącz komputer", "system-shutdown", "#B71C1C", None),  # osobne pytanie
+}
+
+# Profil wybiera się w install.sh (--profil); zapisany jest w ~/.config/senior-os/profil
+PROFILE = {
+    "senior": ["internet", "dokumenty", "filmy", "zdjecia", "pomoc", "wylacz"],
+    "dziecko": ["internet", "dokumenty", "notatnik", "paint", "scratch", "wylacz"],
+    "wszystko": ["internet", "dokumenty", "notatnik", "paint", "scratch",
+                 "filmy", "zdjecia", "pomoc", "wylacz"],
+}
+
+
+def wczytaj_profil():
+    try:
+        with open(os.path.expanduser("~/.config/senior-os/profil"), encoding="utf-8") as f:
+            nazwa = f.read().strip()
+    except OSError:
+        nazwa = ""
+    return PROFILE.get(nazwa, PROFILE["wszystko"])
+
+
+KAFELKI = [WSZYSTKIE[n] for n in wczytaj_profil()]
 
 
 class DuzePytanie(QDialog):
@@ -131,9 +178,10 @@ class Kafelek(QPushButton):
     def __init__(self, napis, ikona, kolor):
         super().__init__(napis)
         self.kolor = kolor
-        self.setFont(QFont("Sans", 28, QFont.Bold))
+        self.setFont(QFont("Sans", 28 if len(KAFELKI) <= 6 else 21, QFont.Bold))
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumSize(260, 180)
+        self.setMinimumSize(240, 120)
         ik = QIcon.fromTheme(ikona)
         if not ik.isNull():
             self.setIcon(ik)
@@ -144,7 +192,7 @@ class Kafelek(QPushButton):
         tlo = "#9E9E9E" if czeka else self.kolor
         self.setStyleSheet(
             f"QPushButton{{background:{tlo}; color:white; border:none;"
-            " border-radius:24px; padding:16px; text-align:center;}"
+            " border-radius:24px; padding:8px; text-align:center;}"
             "QPushButton:hover{border:6px solid #FFD600;}"
             "QPushButton:focus{border:6px solid #FFD600;}"
         )
@@ -163,7 +211,7 @@ class EkranStartowy(QWidget):
 
         self.zegar = QLabel()
         self.zegar.setAlignment(Qt.AlignCenter)
-        self.zegar.setFont(QFont("Sans", 64, QFont.Bold))
+        self.zegar.setFont(QFont("Sans", 64 if len(KAFELKI) <= 6 else 48, QFont.Bold))
         self.data = QLabel()
         self.data.setAlignment(Qt.AlignCenter)
         self.data.setFont(QFont("Sans", 28))

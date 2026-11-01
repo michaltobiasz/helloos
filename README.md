@@ -1,12 +1,18 @@
 # Senior OS
 
-Prosty system dla seniorów na bazie **Linux Mint XFCE**. Po włączeniu komputera senior widzi duży zegar i sześć dużych przycisków:
+Prosty system do nauki obsługi komputera na bazie **Linux Mint XFCE** — dla seniorów i dla dzieci ze szkoły podstawowej. Po włączeniu komputera widać duży zegar i duże przyciski, a pod spodem zwykły pulpit podobny do Windowsa (pasek zadań na dole, menu Start), na którym można ćwiczyć prawdziwą obsługę systemu.
 
-**Internet · Dokumenty · Filmy · Zdjęcia · Pomoc od rodziny · Wyłącz komputer**
+Przyciski zależą od profilu:
 
-![Ekran startowy](docs/ekran-startowy.png)
+| Profil | Przyciski |
+| --- | --- |
+| `senior` | Internet · Dokumenty · Filmy · Zdjęcia · Pomoc zdalna · Wyłącz komputer |
+| `dziecko` | Internet · Dokumenty · Notatnik · Paint · Scratch · Wyłącz komputer |
+| `wszystko` (domyślny) | wszystkie 9 przycisków |
 
-Pod spodem zostaje zwykły pulpit podobny do Windowsa (pasek zadań na dole, menu Start) — dla rodziny i bardziej obytych użytkowników.
+| Senior | Dziecko |
+| --- | --- |
+| ![Profil senior](docs/ekran-startowy.png) | ![Profil dziecko](docs/ekran-dziecko.png) |
 
 ## Co zawiera
 
@@ -17,9 +23,12 @@ Pod spodem zostaje zwykły pulpit podobny do Windowsa (pasek zadań na dole, men
 | PDF | Xreader |
 | Filmy i muzyka | VLC |
 | Zdjęcia | Xviewer |
+| Notatnik | Xed (jak Notatnik w Windowsie) |
+| Paint | Pinta (jak Paint), dla najmłodszych także Tux Paint |
+| Scratch | TurboWarp — Scratch działający bez internetu, otwiera pliki .sb3; bez niego przycisk otwiera Scratch w przeglądarce |
 | Pomoc zdalna | RustDesk |
 
-Ustawienia dla seniora: duże litery i kursor, duże ikony, otwieranie jednym kliknięciem, wyższy pasek zadań, brak blokady ekranu hasłem, automatyczne aktualizacje w tle, polskie foldery.
+Ustawienia: duże litery i kursor, duże ikony, otwieranie jednym kliknięciem, wyższy pasek zadań, brak blokady ekranu hasłem, automatyczne aktualizacje w tle, polskie foldery.
 
 ## Wymagania
 
@@ -35,11 +44,14 @@ Ustawienia dla seniora: duże litery i kursor, duże ikony, otwieranie jednym kl
 ```bash
 git clone https://github.com/UZYTKOWNIK/senior-os.git
 cd senior-os
-sudo ./install.sh --uzytkownik babcia --autologowanie
+sudo ./install.sh --uzytkownik babcia --profil senior --autologowanie
+# albo dla dziecka:
+sudo ./install.sh --uzytkownik ola --profil dziecko
 ```
 
-- `--uzytkownik babcia` — tworzy osobne konto seniora **bez uprawnień administratora** (senior nie zainstaluje ani nie usunie niczego przypadkiem). Twoje konto zostaje administratorem.
-- `--autologowanie` — komputer loguje seniora sam, bez hasła.
+- `--uzytkownik NAZWA` — tworzy osobne konto **bez uprawnień administratora** (senior czy dziecko nie zainstaluje ani nie usunie niczego przypadkiem). Twoje konto zostaje administratorem.
+- `--profil senior|dziecko|wszystko` — zestaw przycisków na ekranie startowym.
+- `--autologowanie` — komputer loguje to konto sam, bez hasła.
 - Bez opcji — ustawia konto, z którego uruchamiasz skrypt.
 - `--bez-rustdesk` — pomija program do pomocy zdalnej.
 
@@ -68,7 +80,7 @@ Gotowy pendrive z Senior OS w środku:
 sudo ./build-iso/build-iso.sh linuxmint-22-xfce-64bit.iso senior-os.iso
 ```
 
-Potrzeba Linuksa i ok. 15 GB miejsca. Chrome nie jest wbudowany w obraz (nie pozwala na to licencja Google) — zainstaluje się sam przy pierwszym uruchomieniu z internetem. Konto tworzone w instalatorze jest kontem administratora; konto seniora utwórz potem przez `sudo /opt/senior-os/install.sh --uzytkownik babcia`.
+Potrzeba Linuksa i ok. 15 GB miejsca. Chrome nie jest wbudowany w obraz (nie pozwala na to licencja Google) — zainstaluje się sam przy pierwszym uruchomieniu z internetem. Konto tworzone w instalatorze jest kontem administratora; konto seniora lub dziecka utwórz potem przez `sudo /opt/senior-os/install.sh --uzytkownik NAZWA --profil senior`.
 
 ### Uruchamianie z pendrive'a
 
@@ -78,11 +90,11 @@ Przed nagraniem na pendrive przetestuj ISO w VirtualBox. Plik ISO ma ok. 3 GB, w
 
 ## Zmiana przycisków
 
-Przyciski są zdefiniowane na liście `KAFELKI` w `ekran-startowy/ekran_startowy.py`. Ekran można sprawdzić na każdym komputerze z Pythonem:
+Przyciski i profile są zdefiniowane w słownikach `WSZYSTKIE` i `PROFILE` w `ekran-startowy/ekran_startowy.py`. Ekran można sprawdzić na każdym komputerze z Pythonem:
 
 ```bash
 pip install PyQt5
-python3 ekran-startowy/ekran_startowy.py --okno
+python3 ekran-startowy/ekran_startowy.py --okno   # profil: plik ~/.config/senior-os/profil
 ```
 
 ## Struktura

@@ -27,3 +27,4 @@ image/png=xviewer.desktop
 image/gif=xviewer.desktop
 image/webp=xviewer.desktop
 image/heic=xviewer.desktop
+text/plain=xed.desktop;mousepad.desktop
