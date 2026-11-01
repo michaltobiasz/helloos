@@ -94,7 +94,7 @@ Needs Linux and about 15 GB of space. Chrome is not built into the image (Google
 
 Write the ISO to a USB stick (Rufus, Balena Etcher or Ventoy) and boot from it (boot menu key: usually F12, F11 or Esc). The system runs "live", without installing, and the disk with Windows stays untouched. In this mode the browser is the built-in Chromium and changes are lost at shutdown — unless you use Ventoy with persistence.
 
-Test the ISO in VirtualBox before writing it to a USB stick. The ISO is about 3 GB, too big for GitHub releases — share it e.g. via SourceForge.
+Test the ISO in VirtualBox before writing it to a USB stick. The ISO is about 4.5 GB (use a USB stick of at least 8 GB), too big for GitHub releases — share it e.g. via SourceForge.
 
 ## Changing the buttons
 
