@@ -1,13 +1,14 @@
 name: Build ISO
 
 # Builds a ready-to-flash HelloOS ISO (Linux Mint XFCE + HelloOS).
-# Runs on every version tag (v0.1.0, v0.2.0, …) or by hand:
-#   Actions → Build ISO → Run workflow
+# Runs on every version tag (v0.1.0, v0.2.0, …), on every push to the
+# "release" branch, or by hand: Actions → Build ISO → Run workflow
 # The ISO is attached to the run as an artifact (download from the run page).
 
 on:
   push:
     tags: ["v*"]
+    branches: [release]
   workflow_dispatch:
     inputs:
       mint_version:
