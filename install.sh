@@ -66,7 +66,8 @@ install_pkgs() {
     # Installs packages, skipping any that are not in the repository.
     local available=() p
     for p in "$@"; do
-        if apt-cache show "$p" >/dev/null 2>&1; then available+=("$p")
+        # Skip packages with no installation candidate (e.g. removed from this release).
+        if apt-cache policy "$p" 2>/dev/null | grep -q 'Candidate: [^(]'; then available+=("$p")
         else warn "$(t "Brak pakietu $p w repozytorium — pomijam." "Package $p not in the repository — skipping.")"; fi
     done
     [ ${#available[@]} -eq 0 ] || apt-get install -y --no-install-recommends "${available[@]}"
@@ -81,7 +82,7 @@ install_pkgs \
     libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-gtk3 \
     libreoffice-l10n-pl libreoffice-help-pl libreoffice-help-en-us \
     hunspell-pl hunspell-en-us hyphen-pl mythes-pl \
-    xreader xviewer vlc thunar xed pinta tuxpaint flatpak \
+    xreader xviewer vlc thunar xed pinta drawing tuxpaint flatpak \
     python3-pyqt5 xdg-user-dirs fonts-noto-core \
     language-pack-pl language-pack-gnome-pl language-pack-en \
     wget ca-certificates gpg unattended-upgrades
@@ -129,16 +130,18 @@ else
     fi
 fi
 
-step "6/10 $(t "Scratch (TurboWarp — działa także bez internetu)" "Scratch (TurboWarp — works offline too)")"
-if flatpak info org.turbowarp.TurboWarp >/dev/null 2>&1; then
-    t "Scratch jest już zainstalowany." "Scratch is already installed."; echo
-else
-    if ! { flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo \
-           && flatpak install -y --noninteractive flathub org.turbowarp.TurboWarp; }; then
-        warn "$(t "Nie udało się zainstalować Scratch — przycisk otworzy Scratch w przeglądarce." \
-                  "Could not install Scratch — the button will open Scratch in the browser.")"
+step "6/10 $(t "Scratch (TurboWarp) i Paint (Pinta) z Flathuba" "Scratch (TurboWarp) and Paint (Pinta) from Flathub")"
+flatpak_app() {  # flatpak_app ID NAME
+    if flatpak info "$1" >/dev/null 2>&1; then
+        t "$2 jest już zainstalowany." "$2 is already installed."; echo
+    elif ! { flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo \
+             && flatpak install -y --noninteractive flathub "$1"; }; then
+        warn "$(t "Nie udało się zainstalować: $2." "Could not install: $2.")"
     fi
-fi
+}
+flatpak_app org.turbowarp.TurboWarp "Scratch (TurboWarp)"
+# Pinta is no longer packaged in Ubuntu 24.04 / Mint 22 — use Flathub when apt has none.
+command -v pinta >/dev/null || flatpak_app com.github.PintaProject.Pinta "Paint (Pinta)"
 
 step "7/10 $(t "Domyślne programy; LibreOffice w formatach Worda i Excela" "Default apps; LibreOffice saving in Word and Excel formats")"
 install -m 644 "$DEST/config/mimeapps.list" /etc/xdg/mimeapps.list

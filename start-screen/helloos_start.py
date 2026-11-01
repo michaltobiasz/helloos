@@ -122,16 +122,23 @@ def notepad():
     return first_available(["xed"], ["mousepad"], ["gedit"])
 
 
+def flatpak_installed(app_id):
+    return bool(shutil.which("flatpak")) and subprocess.run(
+        ["flatpak", "info", app_id], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ).returncode == 0
+
+
 def paint():
-    return first_available(["pinta"], ["tuxpaint"], ["kolourpaint"])
+    if shutil.which("pinta"):
+        return ["pinta"]
+    if flatpak_installed("com.github.PintaProject.Pinta"):
+        return ["flatpak", "run", "com.github.PintaProject.Pinta"]
+    return first_available(["drawing"], ["tuxpaint"], ["kolourpaint"])
 
 
 def scratch():
     # TurboWarp is Scratch that works offline; otherwise Scratch in the browser.
-    if shutil.which("flatpak") and subprocess.run(
-        ["flatpak", "info", "org.turbowarp.TurboWarp"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    ).returncode == 0:
+    if flatpak_installed("org.turbowarp.TurboWarp"):
         return ["flatpak", "run", "org.turbowarp.TurboWarp"]
     command = browser()
     return command + ["https://scratch.mit.edu/projects/editor/"] if command else None
