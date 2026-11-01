@@ -1,111 +1,117 @@
-# Senior OS
+# HelloOS
 
-Prosty system do nauki obsługi komputera na bazie **Linux Mint XFCE** — dla seniorów i dla dzieci ze szkoły podstawowej. Po włączeniu komputera widać duży zegar i duże przyciski, a pod spodem zwykły pulpit podobny do Windowsa (pasek zadań na dole, menu Start), na którym można ćwiczyć prawdziwą obsługę systemu.
+*[Polska wersja](README.pl.md)*
 
-Przyciski zależą od profilu:
+A simple system for learning to use a computer, built on **Linux Mint XFCE** — for seniors and for primary school children. After switching the computer on you see a big clock and big buttons. Underneath is a normal Windows-like desktop (taskbar at the bottom, Start menu) for practising real everyday use.
 
-| Profil | Przyciski |
+The buttons depend on the profile:
+
+| Profile | Buttons |
 | --- | --- |
-| `senior` | Internet · Dokumenty · Filmy · Zdjęcia · Pomoc zdalna · Wyłącz komputer |
-| `dziecko` | Internet · Dokumenty · Notatnik · Paint · Scratch · Wyłącz komputer |
-| `wszystko` (domyślny) | wszystkie 9 przycisków |
+| `senior` | Internet · Documents · Videos · Pictures · Remote help · Shut down |
+| `child` | Internet · Documents · Notepad · Paint · Scratch · Shut down |
+| `all` (default) | all 9 buttons |
 
-| Senior | Dziecko |
+| Senior | Child |
 | --- | --- |
-| ![Profil senior](docs/ekran-startowy.png) | ![Profil dziecko](docs/ekran-dziecko.png) |
+| ![Senior profile](docs/screen-en-senior.png) | ![Child profile](docs/screen-en-child.png) |
 
-## Co zawiera
+**Languages:** HelloOS follows the system language. The start screen, shortcuts and installer messages are in Polish on a Polish system and in English otherwise. Linux Mint can switch the whole system language (Settings → Languages), and Chrome, LibreOffice and the other apps follow it.
 
-| Zadanie | Program |
+## What's included
+
+| Task | App |
 | --- | --- |
-| Internet | Google Chrome (zapasowo Chromium) |
-| Word, Excel, PowerPoint | LibreOffice — domyślnie zapisuje w formatach .docx / .xlsx / .pptx |
+| Internet | Google Chrome (Chromium as a fallback) |
+| Word, Excel, PowerPoint | LibreOffice — saves as .docx / .xlsx / .pptx by default |
+| Notepad | Xed (like Windows Notepad) |
+| Paint | Pinta (like Paint); Tux Paint for the youngest |
+| Scratch | [TurboWarp](https://desktop.turbowarp.org/) — Scratch that works offline and opens .sb3 files; without it the button opens Scratch in the browser |
 | PDF | Xreader |
-| Filmy i muzyka | VLC |
-| Zdjęcia | Xviewer |
-| Notatnik | Xed (jak Notatnik w Windowsie) |
-| Paint | Pinta (jak Paint), dla najmłodszych także Tux Paint |
-| Scratch | TurboWarp — Scratch działający bez internetu, otwiera pliki .sb3; bez niego przycisk otwiera Scratch w przeglądarce |
-| Pomoc zdalna | RustDesk |
+| Videos and music | VLC |
+| Pictures | Xviewer |
+| Remote help | RustDesk |
 
-Ustawienia: duże litery i kursor, duże ikony, otwieranie jednym kliknięciem, wyższy pasek zadań, brak blokady ekranu hasłem, automatyczne aktualizacje w tle, polskie foldery.
+Settings: bigger text and cursor, big icons, single-click opening, a taller taskbar, no password lock screen, automatic background updates.
 
-## Wymagania
+## Requirements
 
-- Komputer z 64-bitowym procesorem Intel lub AMD, min. 4 GB RAM, 30–40 GB miejsca na dysku
-- [Linux Mint XFCE](https://linuxmint.com/download.php) (instalacja w języku polskim)
-- Internet podczas instalacji
+- A computer with a 64-bit Intel or AMD processor, at least 4 GB RAM and 30–40 GB of disk space
+- [Linux Mint XFCE](https://linuxmint.com/download.php)
+- Internet access during installation
 
-## Instalacja (zalecana droga)
+## Installation (recommended)
 
-1. Zainstaluj Linux Mint XFCE (także obok Windowsa — patrz niżej).
-2. Otwórz Terminal i wpisz:
+1. Install Linux Mint XFCE (it can go next to Windows — see below).
+2. Open a terminal and run:
 
 ```bash
-git clone https://github.com/UZYTKOWNIK/senior-os.git
-cd senior-os
-sudo ./install.sh --uzytkownik babcia --profil senior --autologowanie
-# albo dla dziecka:
-sudo ./install.sh --uzytkownik ola --profil dziecko
+git clone https://github.com/michaltobiasz/helloos.git
+cd helloos
+sudo ./install.sh --user grandma --profile senior --autologin
+# or for a child:
+sudo ./install.sh --user ola --profile child
 ```
 
-- `--uzytkownik NAZWA` — tworzy osobne konto **bez uprawnień administratora** (senior czy dziecko nie zainstaluje ani nie usunie niczego przypadkiem). Twoje konto zostaje administratorem.
-- `--profil senior|dziecko|wszystko` — zestaw przycisków na ekranie startowym.
-- `--autologowanie` — komputer loguje to konto sam, bez hasła.
-- Bez opcji — ustawia konto, z którego uruchamiasz skrypt.
-- `--bez-rustdesk` — pomija program do pomocy zdalnej.
+- `--user NAME` — creates a separate account **without admin rights**, so nothing can be installed or removed by accident. Your own account stays the administrator.
+- `--profile senior|child|all` — which buttons the start screen shows.
+- `--autologin` — the computer logs this account in automatically, without a password.
+- No options — sets up the account that ran the script.
+- `--no-rustdesk` — skips the remote help app.
 
-3. Uruchom komputer ponownie. Przy pierwszym logowaniu ustawienia wyglądu nałożą się same.
+3. Restart the computer. The appearance settings apply automatically at the first login.
 
-Skrypt można uruchamiać wiele razy, np. po zmianach w repozytorium.
+The script can be run many times, e.g. after pulling changes.
 
-## Instalacja obok Windowsa
+## Installing next to Windows
 
-Instalator Minta ma opcję **„Zainstaluj obok Windows”** — Windows zostaje nietknięty, a przy starcie komputera pojawia się menu wyboru. `install.sh` ustawia w nim Senior OS jako domyślny po 3 sekundach.
+The Mint installer has an **"Install alongside Windows"** option. Windows stays untouched and a menu appears at startup to choose the system. `install.sh` makes HelloOS the default after 3 seconds.
 
-Przed instalacją, w Windowsie:
+Before installing, in Windows:
 
-1. **Zrób kopię zapasową** ważnych plików.
-2. Jeśli włączony jest BitLocker / „Szyfrowanie urządzenia” — **zapisz klucz odzyskiwania** i wstrzymaj szyfrowanie.
-3. Wyłącz „Szybkie uruchamianie” (Panel sterowania → Opcje zasilania → Wybierz działanie przycisków zasilania).
-4. W „Zarządzaniu dyskami” zmniejsz partycję C: i zostaw 30–40 GB wolnego miejsca.
+1. **Back up** important files.
+2. If BitLocker / "Device encryption" is on — **save the recovery key** and suspend encryption.
+3. Turn off "Fast startup" (Control Panel → Power Options → Choose what the power buttons do).
+4. In "Disk Management", shrink drive C: to leave 30–40 GB free.
 
-W instalatorze wybierz **„Zainstaluj obok Windows”** — nigdy „Wymaż dysk”.
+In the installer choose **"Install alongside Windows"** — never "Erase disk".
 
-## Własny obraz ISO (eksperymentalne)
+## Custom ISO image (experimental)
 
-Gotowy pendrive z Senior OS w środku:
+A ready-to-use USB stick with HelloOS inside:
 
 ```bash
-sudo ./build-iso/build-iso.sh linuxmint-22-xfce-64bit.iso senior-os.iso
+sudo ./build-iso/build-iso.sh linuxmint-22-xfce-64bit.iso helloos.iso
 ```
 
-Potrzeba Linuksa i ok. 15 GB miejsca. Chrome nie jest wbudowany w obraz (nie pozwala na to licencja Google) — zainstaluje się sam przy pierwszym uruchomieniu z internetem. Konto tworzone w instalatorze jest kontem administratora; konto seniora lub dziecka utwórz potem przez `sudo /opt/senior-os/install.sh --uzytkownik NAZWA --profil senior`.
+Needs Linux and about 15 GB of space. Chrome is not built into the image (Google's licence doesn't allow it) — it installs itself on the first boot with internet access. The account created by the installer is an administrator; create the senior's or child's account afterwards with `sudo /opt/helloos/install.sh --user NAME --profile child`.
 
-### Uruchamianie z pendrive'a
+### Booting from a USB stick
 
-Nagraj ISO na pendrive (Rufus, Balena Etcher lub Ventoy) i uruchom z niego komputer (klawisz menu rozruchu: zwykle F12, F11 lub Esc). System działa „na żywo”, bez instalacji, a dysk z Windowsem zostaje nietknięty. W tym trybie przeglądarką jest wbudowane Chromium, a zmiany znikają po wyłączeniu — chyba że użyjesz Ventoy z opcją persistence.
+Write the ISO to a USB stick (Rufus, Balena Etcher or Ventoy) and boot from it (boot menu key: usually F12, F11 or Esc). The system runs "live", without installing, and the disk with Windows stays untouched. In this mode the browser is the built-in Chromium and changes are lost at shutdown — unless you use Ventoy with persistence.
 
-Przed nagraniem na pendrive przetestuj ISO w VirtualBox. Plik ISO ma ok. 3 GB, więc nie mieści się w wydaniach GitHuba — udostępnij go np. przez SourceForge.
+Test the ISO in VirtualBox before writing it to a USB stick. The ISO is about 3 GB, too big for GitHub releases — share it e.g. via SourceForge.
 
-## Zmiana przycisków
+## Changing the buttons
 
-Przyciski i profile są zdefiniowane w słownikach `WSZYSTKIE` i `PROFILE` w `ekran-startowy/ekran_startowy.py`. Ekran można sprawdzić na każdym komputerze z Pythonem:
+Buttons and profiles are defined in `TILES`, `PROFILES` and `TEXTS` (translations) in `start-screen/helloos_start.py`. You can preview the screen on any computer with Python:
 
 ```bash
 pip install PyQt5
-python3 ekran-startowy/ekran_startowy.py --okno   # profil: plik ~/.config/senior-os/profil
+HELLOOS_LANG=en python3 start-screen/helloos_start.py --window
 ```
 
-## Struktura
+The profile comes from `~/.config/helloos/profile` (`senior`, `child` or `all`).
+
+## Structure
 
 ```
-install.sh                    główny skrypt instalacyjny
-ekran-startowy/               ekran z dużymi przyciskami (Python + PyQt5)
-konfiguracja/                 ustawienia: Chrome, LibreOffice, skojarzenia plików, menu startowe
-build-iso/build-iso.sh        budowa własnego ISO
+install.sh                  main installer
+start-screen/               start screen with big buttons (Python + PyQt5)
+config/                     settings: Chrome, LibreOffice, file associations, boot menu
+build-iso/build-iso.sh      custom ISO builder
 ```
 
-## Licencja
+## Licence
 
-MIT — zob. plik `LICENSE`.
+MIT — see `LICENSE`.

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Senior OS: LibreOffice domyślnie zapisuje w formatach Worda i Excela
-     i nie pyta przy każdym zapisie o „obcy format”. -->
+<!-- HelloOS: LibreOffice saves in Word, Excel and PowerPoint formats by default
+     and does not warn about "foreign formats" on every save. -->
 <oor:data xmlns:xs="http://www.w3.org/2001/XMLSchema"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xmlns:oor="http://openoffice.org/2001/registry">

@@ -1,0 +1,34 @@
+name: Check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell scripts (shellcheck)
+        run: shellcheck install.sh build-iso/build-iso.sh config/*.sh
+
+      - name: Start screen runs (Polish and English)
+        run: |
+          pip install PyQt5
+          sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libegl1 libgl1
+          for lang in pl en; do
+            HELLOOS_LANG=$lang QT_QPA_PLATFORM=offscreen python3 -c "
+          import sys; sys.path.insert(0, 'start-screen')
+          from PyQt5.QtWidgets import QApplication
+          import helloos_start as h
+          app = QApplication(sys.argv)
+          w = h.StartScreen(); w.resize(1366, 768); w.show(); app.processEvents()
+          w.grab().save('start-screen-$lang.png'); print('OK $lang')
+          "
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: start-screen-*.png

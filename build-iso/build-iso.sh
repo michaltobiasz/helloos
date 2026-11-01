@@ -1,72 +1,72 @@
 #!/usr/bin/env bash
-# Senior OS — buduje własny obraz ISO z oryginalnego ISO Linux Mint XFCE.
+# HelloOS — builds a custom ISO image from the original Linux Mint XFCE ISO.
 #
-# Użycie (na komputerze z Linux Mint lub Ubuntu, ok. 15 GB wolnego miejsca):
-#   sudo ./build-iso/build-iso.sh linuxmint-xfce-64bit.iso [senior-os.iso]
+# Usage (on a Linux Mint or Ubuntu computer with ~15 GB free space):
+#   sudo ./build-iso/build-iso.sh linuxmint-xfce-64bit.iso [helloos.iso]
 #
-# Co robi: rozpakowuje system z ISO, uruchamia w nim install.sh --iso,
-# pakuje z powrotem i zapisuje nowe ISO z zachowaniem oryginalnego rozruchu
-# (działa i na UEFI, i na starszym BIOS).
+# What it does: unpacks the system from the ISO, runs install.sh --iso inside it,
+# packs it back and writes a new ISO that keeps the original boot setup
+# (works on both UEFI and older BIOS computers).
 #
-# Wersja eksperymentalna — przetestuj ISO w VirtualBox przed nagraniem na pendrive.
+# Experimental — test the ISO in VirtualBox before writing it to a USB stick.
 
 set -euo pipefail
 
-ISO_WE="${1:-}"
-ISO_WY="${2:-senior-os.iso}"
+ISO_IN="${1:-}"
+ISO_OUT="${2:-helloos.iso}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-[ "$(id -u)" -eq 0 ] || { echo "Uruchom przez sudo."; exit 1; }
-[ -f "$ISO_WE" ] || { echo "Podaj plik ISO Linux Mint XFCE: sudo $0 mint.iso"; exit 1; }
+[ "$(id -u)" -eq 0 ] || { echo "Run with sudo."; exit 1; }
+[ -f "$ISO_IN" ] || { echo "Give a Linux Mint XFCE ISO file: sudo $0 mint.iso"; exit 1; }
 
 for prog in xorriso unsquashfs mksquashfs; do
     command -v "$prog" >/dev/null || apt-get install -y xorriso squashfs-tools
 done
 
-PRACA=$(mktemp -d /var/tmp/senior-iso.XXXX)
-ROOT="$PRACA/root"
-sprzatanie() {
+WORK=$(mktemp -d /var/tmp/helloos-iso.XXXX)
+ROOT="$WORK/root"
+cleanup() {
     for m in dev/pts dev proc sys run; do umount -lf "$ROOT/$m" 2>/dev/null || true; done
-    rm -rf "$PRACA"
+    rm -rf "$WORK"
 }
-trap sprzatanie EXIT
+trap cleanup EXIT
 
-echo "==> Rozpakowuję system z ISO"
-xorriso -osirrox on -indev "$ISO_WE" \
-    -extract /casper/filesystem.squashfs "$PRACA/filesystem.squashfs" \
-    -extract /md5sum.txt "$PRACA/md5sum.txt"
-unsquashfs -d "$ROOT" "$PRACA/filesystem.squashfs"
-rm -f "$PRACA/filesystem.squashfs"
+echo "==> Unpacking the system from the ISO"
+xorriso -osirrox on -indev "$ISO_IN" \
+    -extract /casper/filesystem.squashfs "$WORK/filesystem.squashfs" \
+    -extract /md5sum.txt "$WORK/md5sum.txt"
+unsquashfs -d "$ROOT" "$WORK/filesystem.squashfs"
+rm -f "$WORK/filesystem.squashfs"
 
-echo "==> Instaluję Senior OS wewnątrz obrazu"
+echo "==> Installing HelloOS inside the image"
 for m in dev dev/pts proc sys run; do mount --bind "/$m" "$ROOT/$m"; done
 RESOLV_LINK=$(readlink "$ROOT/etc/resolv.conf" || true)
 cp --remove-destination /etc/resolv.conf "$ROOT/etc/resolv.conf"
-mkdir -p "$ROOT/tmp/senior-os"
-cp -r "$REPO/install.sh" "$REPO/ekran-startowy" "$REPO/konfiguracja" "$ROOT/tmp/senior-os/"
-chroot "$ROOT" /bin/bash /tmp/senior-os/install.sh --iso
+mkdir -p "$ROOT/tmp/helloos"
+cp -r "$REPO/install.sh" "$REPO/start-screen" "$REPO/config" "$ROOT/tmp/helloos/"
+chroot "$ROOT" /bin/bash /tmp/helloos/install.sh --iso
 chroot "$ROOT" apt-get clean
-rm -rf "$ROOT/tmp/senior-os" "$ROOT/var/lib/apt/lists/"*
+rm -rf "$ROOT/tmp/helloos" "$ROOT/var/lib/apt/lists/"*
 for m in dev/pts dev proc sys run; do umount -lf "$ROOT/$m"; done
 [ -n "$RESOLV_LINK" ] && ln -sf "$RESOLV_LINK" "$ROOT/etc/resolv.conf"
 
-echo "==> Pakuję system (to potrwa kilkanaście minut)"
-mksquashfs "$ROOT" "$PRACA/filesystem.squashfs" -comp xz -noappend
-du -sx --block-size=1 "$ROOT" | cut -f1 > "$PRACA/filesystem.size"
+echo "==> Packing the system (this takes a while)"
+mksquashfs "$ROOT" "$WORK/filesystem.squashfs" -comp xz -noappend
+du -sx --block-size=1 "$ROOT" | cut -f1 > "$WORK/filesystem.size"
 
-# Sumy kontrolne, żeby opcja „sprawdź płytę” nie zgłaszała błędu.
-for plik in filesystem.squashfs filesystem.size; do
-    suma=$(md5sum "$PRACA/$plik" | cut -d' ' -f1)
-    sed -i "s|^[0-9a-f]*  \./casper/$plik\$|$suma  ./casper/$plik|" "$PRACA/md5sum.txt"
+# Update checksums so the "check disc for defects" option does not report errors.
+for f in filesystem.squashfs filesystem.size; do
+    sum=$(md5sum "$WORK/$f" | cut -d' ' -f1)
+    sed -i "s|^[0-9a-f]*  \./casper/$f\$|$sum  ./casper/$f|" "$WORK/md5sum.txt"
 done
 
-echo "==> Zapisuję $ISO_WY"
-rm -f "$ISO_WY"
-xorriso -indev "$ISO_WE" -outdev "$ISO_WY" \
-    -map "$PRACA/filesystem.squashfs" /casper/filesystem.squashfs \
-    -map "$PRACA/filesystem.size" /casper/filesystem.size \
-    -map "$PRACA/md5sum.txt" /md5sum.txt \
+echo "==> Writing $ISO_OUT"
+rm -f "$ISO_OUT"
+xorriso -indev "$ISO_IN" -outdev "$ISO_OUT" \
+    -map "$WORK/filesystem.squashfs" /casper/filesystem.squashfs \
+    -map "$WORK/filesystem.size" /casper/filesystem.size \
+    -map "$WORK/md5sum.txt" /md5sum.txt \
     -boot_image any replay
 
-echo "Gotowe: $ISO_WY"
-echo "Chrome zainstaluje się sam po pierwszym uruchomieniu z internetem."
+echo "Done: $ISO_OUT"
+echo "Chrome installs itself on the first boot with internet access."

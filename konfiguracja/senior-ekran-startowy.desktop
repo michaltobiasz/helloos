@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Ekran startowy
-Comment=Duże przyciski: Internet, Dokumenty, Filmy, Zdjęcia
-Exec=/usr/local/bin/senior-ekran-startowy
-Icon=go-home
-Terminal=false
-Categories=Utility;
-X-GNOME-Autostart-enabled=true

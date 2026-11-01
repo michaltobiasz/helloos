@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=HelloOS — appearance settings
+Name[pl]=HelloOS — ustawienia wyglądu
+Exec=/opt/helloos/config/helloos-first-login.sh
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

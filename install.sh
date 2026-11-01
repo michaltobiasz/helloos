@@ -1,192 +1,209 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1111
-# Senior OS — zamienia świeżo zainstalowanego Linux Mint XFCE w prosty system do nauki
-# obsługi komputera: dla seniorów i dla dzieci ze szkoły podstawowej.
+# HelloOS — turns a fresh Linux Mint XFCE install into a simple system for learning
+# to use a computer: for seniors and for primary school children.
 #
-# Użycie (na komputerze z Linux Mint XFCE, z internetem):
-#   sudo ./install.sh                         # ustawia konto, z którego uruchomiono sudo
-#   sudo ./install.sh --uzytkownik babcia     # tworzy osobne konto seniora (bez uprawnień admina)
-#   sudo ./install.sh --uzytkownik babcia --autologowanie
-#   sudo ./install.sh --uzytkownik ola --profil dziecko   # profil: senior | dziecko | wszystko
-#   sudo ./install.sh --iso                   # tryb budowania obrazu ISO (używa build-iso.sh)
+# Usage (on a computer with Linux Mint XFCE and internet access):
+#   sudo ./install.sh                                  # sets up the account that ran sudo
+#   sudo ./install.sh --user grandma --profile senior  # creates a separate account (no admin rights)
+#   sudo ./install.sh --user ola --profile child --autologin
+#   sudo ./install.sh --iso                            # image build mode (used by build-iso.sh)
 #
-# Skrypt można uruchamiać wiele razy — nic się nie zdubluje.
+# Profiles: senior | child | all (default). Other options: --no-rustdesk
+# Messages are in Polish on a Polish system, otherwise in English.
+# Safe to run many times — nothing gets duplicated.
 
 set -euo pipefail
 
-KATALOG_ZRODLA="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CEL=/opt/senior-os
-UZYTKOWNIK=""
-AUTOLOGOWANIE=0
-TRYB_ISO=0
-BEZ_RUSTDESK=0
-PROFIL=""
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEST=/opt/helloos
+TARGET_USER=""
+AUTOLOGIN=0
+ISO_MODE=0
+NO_RUSTDESK=0
+PROFILE=""
 
-komunikat() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
-ostrzezenie() { printf '\033[1;33m[!] %s\033[0m\n' "$*" >&2; }
-blad() { printf '\033[1;31m[BŁĄD] %s\033[0m\n' "$*" >&2; exit 1; }
+case "${LANG:-}" in pl*) PL=1 ;; *) PL=0 ;; esac
+t() { if [ "$PL" -eq 1 ]; then printf '%s' "$1"; else printf '%s' "$2"; fi; }  # t POLISH ENGLISH
+
+step() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
+warn() { printf '\033[1;33m[!] %s\033[0m\n' "$*" >&2; }
+die() { printf '\033[1;31m[%s] %s\033[0m\n' "$(t BŁĄD ERROR)" "$*" >&2; exit 1; }
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --uzytkownik) UZYTKOWNIK="${2:-}"; shift 2 ;;
-        --autologowanie) AUTOLOGOWANIE=1; shift ;;
-        --iso) TRYB_ISO=1; shift ;;
-        --bez-rustdesk) BEZ_RUSTDESK=1; shift ;;
-        --profil) PROFIL="${2:-}"; shift 2 ;;
-        -h|--help) sed -n '3,14p' "$0"; exit 0 ;;
-        *) blad "Nieznana opcja: $1 (pomoc: --help)" ;;
+        --user|--uzytkownik) TARGET_USER="${2:-}"; shift 2 ;;
+        --profile|--profil) PROFILE="${2:-}"; shift 2 ;;
+        --autologin|--autologowanie) AUTOLOGIN=1; shift ;;
+        --iso) ISO_MODE=1; shift ;;
+        --no-rustdesk|--bez-rustdesk) NO_RUSTDESK=1; shift ;;
+        -h|--help) sed -n '3,15p' "$0"; exit 0 ;;
+        *) die "$(t "Nieznana opcja: $1 (pomoc: --help)" "Unknown option: $1 (see --help)")" ;;
     esac
 done
 
-[ "$(id -u)" -eq 0 ] || blad "Uruchom przez sudo: sudo ./install.sh"
-[ "$(uname -m)" = "x86_64" ] || blad "Potrzebny jest 64-bitowy procesor Intel/AMD (x86_64)."
-command -v apt-get >/dev/null || blad "Ten skrypt działa na Linux Mint / Ubuntu / Debian."
-case "$PROFIL" in ""|senior|dziecko|wszystko) ;; *) blad "Profil: senior, dziecko albo wszystko." ;; esac
+case "$PROFILE" in
+    "") ;;
+    senior) ;;
+    child|dziecko) PROFILE=child ;;
+    all|wszystko) PROFILE=all ;;
+    *) die "$(t "Profil: senior, child albo all." "Profile must be senior, child or all.")" ;;
+esac
 
-if [ "$TRYB_ISO" -eq 0 ] && [ -z "$UZYTKOWNIK" ]; then
-    UZYTKOWNIK="${SUDO_USER:-}"
-    [ -n "$UZYTKOWNIK" ] && [ "$UZYTKOWNIK" != "root" ] \
-        || blad "Podaj konto: sudo ./install.sh --uzytkownik NAZWA"
+[ "$(id -u)" -eq 0 ] || die "$(t "Uruchom przez sudo: sudo ./install.sh" "Run with sudo: sudo ./install.sh")"
+[ "$(uname -m)" = "x86_64" ] || die "$(t "Potrzebny jest 64-bitowy procesor Intel/AMD (x86_64)." "A 64-bit Intel/AMD processor (x86_64) is required.")"
+command -v apt-get >/dev/null || die "$(t "Ten skrypt działa na Linux Mint / Ubuntu / Debian." "This script works on Linux Mint / Ubuntu / Debian.")"
+
+if [ "$ISO_MODE" -eq 0 ] && [ -z "$TARGET_USER" ]; then
+    TARGET_USER="${SUDO_USER:-}"
+    [ -n "$TARGET_USER" ] && [ "$TARGET_USER" != "root" ] \
+        || die "$(t "Podaj konto: sudo ./install.sh --user NAZWA" "Choose an account: sudo ./install.sh --user NAME")"
 fi
 
 export DEBIAN_FRONTEND=noninteractive
 
-zainstaluj() {
-    # Instaluje pakiety, pomijając te, których nie ma w repozytorium.
-    local dostepne=() p
+install_pkgs() {
+    # Installs packages, skipping any that are not in the repository.
+    local available=() p
     for p in "$@"; do
-        if apt-cache show "$p" >/dev/null 2>&1; then dostepne+=("$p")
-        else ostrzezenie "Brak pakietu $p w repozytorium — pomijam."; fi
+        if apt-cache show "$p" >/dev/null 2>&1; then available+=("$p")
+        else warn "$(t "Brak pakietu $p w repozytorium — pomijam." "Package $p not in the repository — skipping.")"; fi
     done
-    [ ${#dostepne[@]} -eq 0 ] || apt-get install -y --no-install-recommends "${dostepne[@]}"
+    [ ${#available[@]} -eq 0 ] || apt-get install -y --no-install-recommends "${available[@]}"
 }
 
 # ---------------------------------------------------------------------------
-komunikat "1/10 Aktualizacja listy programów"
+step "1/10 $(t "Aktualizacja listy programów" "Updating package lists")"
 apt-get update
 
-komunikat "2/10 Instalacja programów (biuro, notatnik, Paint, PDF, wideo, zdjęcia, język polski)"
-zainstaluj \
+step "2/10 $(t "Programy: biuro, Notatnik, Paint, PDF, wideo, zdjęcia, języki" "Apps: office, Notepad, Paint, PDF, video, pictures, languages")"
+install_pkgs \
     libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-gtk3 \
-    libreoffice-l10n-pl libreoffice-help-pl hunspell-pl hyphen-pl mythes-pl \
+    libreoffice-l10n-pl libreoffice-help-pl libreoffice-help-en-us \
+    hunspell-pl hunspell-en-us hyphen-pl mythes-pl \
     xreader xviewer vlc thunar xed pinta tuxpaint flatpak \
     python3-pyqt5 xdg-user-dirs fonts-noto-core \
-    language-pack-pl language-pack-gnome-pl \
+    language-pack-pl language-pack-gnome-pl language-pack-en \
     wget ca-certificates gpg unattended-upgrades
 
-komunikat "3/10 Pliki Senior OS do $CEL"
-mkdir -p "$CEL"
-cp -r "$KATALOG_ZRODLA/ekran-startowy" "$KATALOG_ZRODLA/konfiguracja" "$CEL/"
-cp "$KATALOG_ZRODLA/install.sh" "$CEL/"
-chmod 755 "$CEL/ekran-startowy/ekran_startowy.py" \
-          "$CEL/konfiguracja/senior-pierwsze-logowanie.sh" \
-          "$CEL/konfiguracja/zainstaluj-chrome.sh"
-ln -sf "$CEL/ekran-startowy/ekran_startowy.py" /usr/local/bin/senior-ekran-startowy
-install -m 644 "$CEL/konfiguracja/senior-ekran-startowy.desktop" /usr/share/applications/
+step "3/10 $(t "Pliki HelloOS do" "HelloOS files to") $DEST"
+mkdir -p "$DEST"
+cp -r "$SRC/start-screen" "$SRC/config" "$DEST/"
+cp "$SRC/install.sh" "$DEST/"
+chmod 755 "$DEST/start-screen/helloos_start.py" \
+          "$DEST/config/helloos-first-login.sh" \
+          "$DEST/config/install-chrome.sh"
+ln -sf "$DEST/start-screen/helloos_start.py" /usr/local/bin/helloos-start
+install -m 644 "$DEST/config/helloos-start.desktop" /usr/share/applications/
 
-komunikat "4/10 Przeglądarka Google Chrome"
-if [ "$TRYB_ISO" -eq 1 ]; then
-    # Licencja Google nie pozwala wbudować Chrome w rozpowszechniany obraz.
-    # Zainstaluje się sam przy pierwszym uruchomieniu komputera z internetem.
-    install -m 644 "$CEL/konfiguracja/senior-chrome.service" /etc/systemd/system/
-    systemctl enable senior-chrome.service 2>/dev/null \
-        || ln -sf /etc/systemd/system/senior-chrome.service \
-                  /etc/systemd/system/multi-user.target.wants/senior-chrome.service
-    zainstaluj chromium   # zapasowa przeglądarka, gdyby nie było internetu
+step "4/10 Google Chrome"
+if [ "$ISO_MODE" -eq 1 ]; then
+    # Google's licence does not allow Chrome inside a redistributed image.
+    # It installs itself on the first boot with internet access.
+    install -m 644 "$DEST/config/helloos-chrome.service" /etc/systemd/system/
+    systemctl enable helloos-chrome.service 2>/dev/null \
+        || ln -sf /etc/systemd/system/helloos-chrome.service \
+                  /etc/systemd/system/multi-user.target.wants/helloos-chrome.service
+    install_pkgs chromium   # fallback browser for offline / live USB use
 else
-    "$CEL/konfiguracja/zainstaluj-chrome.sh" || {
-        ostrzezenie "Nie udało się zainstalować Chrome — instaluję Chromium."
-        zainstaluj chromium
+    "$DEST/config/install-chrome.sh" || {
+        warn "$(t "Nie udało się zainstalować Chrome — instaluję Chromium." "Could not install Chrome — installing Chromium.")"
+        install_pkgs chromium
     }
 fi
 mkdir -p /etc/opt/chrome/policies/recommended /etc/chromium/policies/recommended
-install -m 644 "$CEL/konfiguracja/chrome-polityki.json" /etc/opt/chrome/policies/recommended/senior-os.json
-install -m 644 "$CEL/konfiguracja/chrome-polityki.json" /etc/chromium/policies/recommended/senior-os.json
+install -m 644 "$DEST/config/chrome-policies.json" /etc/opt/chrome/policies/recommended/helloos.json
+install -m 644 "$DEST/config/chrome-policies.json" /etc/chromium/policies/recommended/helloos.json
 
-komunikat "5/10 Pomoc zdalna (RustDesk)"
-if [ "$BEZ_RUSTDESK" -eq 1 ] || command -v rustdesk >/dev/null; then
-    echo "Pomijam (już jest albo wyłączono)."
+step "5/10 $(t "Pomoc zdalna (RustDesk)" "Remote help (RustDesk)")"
+if [ "$NO_RUSTDESK" -eq 1 ] || command -v rustdesk >/dev/null; then
+    t "Pomijam (już jest albo wyłączono)." "Skipping (already installed or disabled)."; echo
 else
     URL=$(wget -qO- https://api.github.com/repos/rustdesk/rustdesk/releases/latest \
           | grep -o 'https://[^"]*x86_64\.deb' | grep -v sciter | head -1 || true)
     if [ -n "$URL" ] && wget -qO /tmp/rustdesk.deb "$URL"; then
-        apt-get install -y /tmp/rustdesk.deb || ostrzezenie "RustDesk nie zainstalował się."
+        apt-get install -y /tmp/rustdesk.deb || warn "$(t "RustDesk nie zainstalował się." "RustDesk failed to install.")"
         rm -f /tmp/rustdesk.deb
     else
-        ostrzezenie "Nie udało się pobrać RustDesk — przycisk pomocy pokaże komunikat."
+        warn "$(t "Nie udało się pobrać RustDesk." "Could not download RustDesk.")"
     fi
 fi
 
-komunikat "6/10 Scratch (TurboWarp — działa także bez internetu)"
+step "6/10 $(t "Scratch (TurboWarp — działa także bez internetu)" "Scratch (TurboWarp — works offline too)")"
 if flatpak info org.turbowarp.TurboWarp >/dev/null 2>&1; then
-    echo "Scratch jest już zainstalowany."
+    t "Scratch jest już zainstalowany." "Scratch is already installed."; echo
 else
     if ! { flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo \
            && flatpak install -y --noninteractive flathub org.turbowarp.TurboWarp; }; then
-        ostrzezenie "Nie udało się zainstalować Scratch — przycisk otworzy Scratch w przeglądarce."
+        warn "$(t "Nie udało się zainstalować Scratch — przycisk otworzy Scratch w przeglądarce." \
+                  "Could not install Scratch — the button will open Scratch in the browser.")"
     fi
 fi
 
-komunikat "7/10 Domyślne programy i LibreOffice w formatach Worda i Excela"
-install -m 644 "$CEL/konfiguracja/mimeapps.list" /etc/xdg/mimeapps.list
-for katalog in /usr/lib/libreoffice/share/registry /opt/libreoffice*/share/registry; do
-    [ -d "$katalog" ] && install -m 644 "$CEL/konfiguracja/libreoffice-senior.xcd" "$katalog/senior-os.xcd"
+step "7/10 $(t "Domyślne programy; LibreOffice w formatach Worda i Excela" "Default apps; LibreOffice saving in Word and Excel formats")"
+install -m 644 "$DEST/config/mimeapps.list" /etc/xdg/mimeapps.list
+for dir in /usr/lib/libreoffice/share/registry /opt/libreoffice*/share/registry; do
+    [ -d "$dir" ] && install -m 644 "$DEST/config/libreoffice-helloos.xcd" "$dir/helloos.xcd"
 done
 
-komunikat "8/10 Automatyczne aktualizacje w tle"
+step "8/10 $(t "Automatyczne aktualizacje w tle" "Automatic background updates")"
 if command -v mintupdate-automation >/dev/null; then
-    mintupdate-automation upgrade enable || ostrzezenie "Nie udało się włączyć aktualizacji Mint."
+    mintupdate-automation upgrade enable || warn "$(t "Nie udało się włączyć aktualizacji Mint." "Could not enable Mint updates.")"
 fi
 cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
 
-komunikat "9/10 Ustawienia dla nowych kont i konta użytkownika"
-# /etc/skel: każde nowe konto (także tworzone przez instalator z ISO) dostaje ustawienia.
+step "9/10 $(t "Ustawienia dla nowych kont i wybranego konta" "Settings for new accounts and the chosen account")"
+# /etc/skel: every new account (including one created by the ISO installer) gets the settings.
 mkdir -p /etc/skel/.config/autostart /etc/skel/.linuxmint/mintwelcome
-install -m 644 "$CEL/konfiguracja/senior-pierwsze-logowanie.desktop" /etc/skel/.config/autostart/
-install -m 644 "$CEL/konfiguracja/senior-ekran-startowy.desktop" /etc/skel/.config/autostart/
+install -m 644 "$DEST/config/helloos-first-login.desktop" /etc/skel/.config/autostart/
+install -m 644 "$DEST/config/helloos-start.desktop" /etc/skel/.config/autostart/
 touch /etc/skel/.linuxmint/mintwelcome/norun.flag
 
-if [ -n "$UZYTKOWNIK" ]; then
-    if ! id "$UZYTKOWNIK" >/dev/null 2>&1; then
-        echo "Tworzę konto „${UZYTKOWNIK}” (bez uprawnień administratora)."
-        useradd -m -s /bin/bash -G audio,video,plugdev,netdev,lpadmin,scanner "$UZYTKOWNIK" 2>/dev/null \
-            || useradd -m -s /bin/bash "$UZYTKOWNIK"
-        echo "Ustaw hasło dla konta $UZYTKOWNIK:"
-        passwd "$UZYTKOWNIK"
+if [ -n "$TARGET_USER" ]; then
+    if ! id "$TARGET_USER" >/dev/null 2>&1; then
+        t "Tworzę konto „${TARGET_USER}” (bez uprawnień administratora)." \
+          "Creating account \"${TARGET_USER}\" (without admin rights)."; echo
+        useradd -m -s /bin/bash -G audio,video,plugdev,netdev,lpadmin,scanner "$TARGET_USER" 2>/dev/null \
+            || useradd -m -s /bin/bash "$TARGET_USER"
+        t "Ustaw hasło dla konta $TARGET_USER:" "Set a password for $TARGET_USER:"; echo
+        passwd "$TARGET_USER"
     fi
-    DOM=$(getent passwd "$UZYTKOWNIK" | cut -d: -f6)
-    mkdir -p "$DOM/.config/autostart" "$DOM/.linuxmint/mintwelcome"
-    cp "$CEL/konfiguracja/senior-pierwsze-logowanie.desktop" \
-       "$CEL/konfiguracja/senior-ekran-startowy.desktop" "$DOM/.config/autostart/"
-    touch "$DOM/.linuxmint/mintwelcome/norun.flag"
-    mkdir -p "$DOM/.config/senior-os"
-    echo "${PROFIL:-wszystko}" > "$DOM/.config/senior-os/profil"
-    rm -f "$DOM/.config/senior-os/skonfigurowano"   # ustawienia nałożą się przy następnym logowaniu
-    chown -R "$UZYTKOWNIK:" "$DOM/.config" "$DOM/.linuxmint"
+    HOME_DIR=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+    mkdir -p "$HOME_DIR/.config/autostart" "$HOME_DIR/.config/helloos" "$HOME_DIR/.linuxmint/mintwelcome"
+    cp "$DEST/config/helloos-first-login.desktop" \
+       "$DEST/config/helloos-start.desktop" "$HOME_DIR/.config/autostart/"
+    touch "$HOME_DIR/.linuxmint/mintwelcome/norun.flag"
+    echo "${PROFILE:-all}" > "$HOME_DIR/.config/helloos/profile"
+    rm -f "$HOME_DIR/.config/helloos/configured"   # settings re-apply at next login
+    chown -R "$TARGET_USER:" "$HOME_DIR/.config" "$HOME_DIR/.linuxmint"
 
-    if [ "$AUTOLOGOWANIE" -eq 1 ]; then
+    if [ "$AUTOLOGIN" -eq 1 ]; then
         mkdir -p /etc/lightdm/lightdm.conf.d
-        printf '[Seat:*]\nautologin-user=%s\nautologin-user-timeout=0\n' "$UZYTKOWNIK" \
-            > /etc/lightdm/lightdm.conf.d/70-senior-os.conf
-        groupadd -f autologin && usermod -aG autologin "$UZYTKOWNIK"
-        echo "Komputer będzie logował konto $UZYTKOWNIK automatycznie."
+        printf '[Seat:*]\nautologin-user=%s\nautologin-user-timeout=0\n' "$TARGET_USER" \
+            > /etc/lightdm/lightdm.conf.d/70-helloos.conf
+        groupadd -f autologin && usermod -aG autologin "$TARGET_USER"
+        t "Komputer będzie logował konto $TARGET_USER automatycznie." \
+          "The computer will log in $TARGET_USER automatically."; echo
     fi
 fi
 
-komunikat "10/10 Menu startowe (gdy na dysku jest też Windows)"
-if [ "$TRYB_ISO" -eq 0 ] && command -v update-grub >/dev/null; then
+step "10/10 $(t "Menu startowe (gdy na dysku jest też Windows)" "Boot menu (when Windows is also on the disk)")"
+if [ "$ISO_MODE" -eq 0 ] && command -v update-grub >/dev/null; then
     if [ -d /boot/efi/EFI/Microsoft ] || { command -v os-prober >/dev/null && os-prober 2>/dev/null | grep -qi windows; }; then
-        install -m 644 "$CEL/konfiguracja/grub-senior.cfg" /etc/default/grub.d/99-senior-os.cfg
+        install -m 644 "$DEST/config/grub-helloos.cfg" /etc/default/grub.d/99-helloos.cfg
         update-grub
-        echo "Wykryto Windows: Senior OS uruchomi się domyślnie po 3 sekundach."
+        t "Wykryto Windows: HelloOS uruchomi się domyślnie po 3 sekundach." \
+          "Windows found: HelloOS will start by default after 3 seconds."; echo
     else
-        echo "Nie wykryto Windowsa — menu startowe bez zmian."
+        t "Nie wykryto Windowsa — menu startowe bez zmian." "Windows not found — boot menu unchanged."; echo
     fi
 fi
 
-komunikat "Gotowe!"
-echo "Wyloguj się i zaloguj ponownie (albo uruchom komputer ponownie)."
-echo "Przy pierwszym logowaniu ustawienia wyglądu nałożą się same."
+step "$(t "Gotowe!" "Done!")"
+t "Wyloguj się i zaloguj ponownie (albo uruchom komputer ponownie)." \
+  "Log out and back in (or restart the computer)."; echo
+t "Przy pierwszym logowaniu ustawienia wyglądu nałożą się same." \
+  "The appearance settings apply automatically at the first login."; echo

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Start screen
+Name[pl]=Ekran startowy
+Comment=Big buttons: Internet, Documents, Notepad, Paint, Scratch
+Comment[pl]=Duże przyciski: Internet, Dokumenty, Notatnik, Paint, Scratch
+Exec=/usr/local/bin/helloos-start
+Icon=go-home
+Terminal=false
+Categories=Utility;
+X-GNOME-Autostart-enabled=true

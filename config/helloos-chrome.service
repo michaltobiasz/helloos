@@ -1,0 +1,17 @@
+[Unit]
+Description=HelloOS: install Google Chrome on first boot
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=!/usr/bin/google-chrome-stable
+# Live USB session (boot=casper): don't download Chrome on every boot —
+# the built-in Chromium is enough. After installing to disk, Chrome installs itself.
+ConditionKernelCommandLine=!boot=casper
+
+[Service]
+Type=oneshot
+# A few attempts, in case the internet connection comes up a bit later.
+ExecStart=/bin/bash -c 'for i in 1 2 3 4 5; do /opt/helloos/config/install-chrome.sh && exit 0; sleep 60; done; exit 1'
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=multi-user.target
