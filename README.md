@@ -34,6 +34,10 @@ The buttons depend on the profile:
 
 Settings: bigger text and cursor, big icons, single-click opening, a taller taskbar, no password lock screen, automatic background updates.
 
+## Download a ready ISO
+
+Every version is built automatically by GitHub: go to **Actions → Build ISO**, open the newest successful run and download the ISO from **Artifacts** at the bottom of the page (GitHub login required, kept for 90 days). Unzip it and write the `.iso` to a USB stick with Rufus, Balena Etcher or Ventoy — then boot from it to try HelloOS live or install it.
+
 ## Requirements
 
 - A computer with a 64-bit Intel or AMD processor, at least 4 GB RAM and 30–40 GB of disk space

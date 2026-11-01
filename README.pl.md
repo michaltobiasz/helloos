@@ -34,6 +34,10 @@ Przyciski zależą od profilu:
 
 Ustawienia: duże litery i kursor, duże ikony, otwieranie jednym kliknięciem, wyższy pasek zadań, brak blokady ekranu hasłem, automatyczne aktualizacje w tle.
 
+## Pobierz gotowe ISO
+
+Każdą wersję GitHub buduje automatycznie: wejdź w **Actions → Build ISO**, otwórz najnowsze udane uruchomienie i pobierz ISO z sekcji **Artifacts** na dole strony (trzeba być zalogowanym na GitHubie, plik jest przechowywany 90 dni). Rozpakuj i nagraj plik `.iso` na pendrive programem Rufus, Balena Etcher lub Ventoy — potem uruchom z niego komputer, żeby wypróbować HelloOS na żywo albo go zainstalować.
+
 ## Wymagania
 
 - Komputer z 64-bitowym procesorem Intel lub AMD, min. 4 GB RAM, 30–40 GB miejsca na dysku

@@ -23,7 +23,7 @@ for prog in xorriso unsquashfs mksquashfs; do
     command -v "$prog" >/dev/null || apt-get install -y xorriso squashfs-tools
 done
 
-WORK=$(mktemp -d /var/tmp/helloos-iso.XXXX)
+WORK=$(mktemp -d "${HELLOOS_WORKDIR:-/var/tmp}/helloos-iso.XXXX")
 ROOT="$WORK/root"
 cleanup() {
     for m in dev/pts dev proc sys run; do umount -lf "$ROOT/$m" 2>/dev/null || true; done
@@ -33,8 +33,9 @@ trap cleanup EXIT
 
 echo "==> Unpacking the system from the ISO"
 xorriso -osirrox on -indev "$ISO_IN" \
-    -extract /casper/filesystem.squashfs "$WORK/filesystem.squashfs" \
-    -extract /md5sum.txt "$WORK/md5sum.txt"
+    -extract /casper/filesystem.squashfs "$WORK/filesystem.squashfs"
+# md5sum.txt is optional (used by "check disc for defects")
+xorriso -osirrox on -indev "$ISO_IN" -extract /md5sum.txt "$WORK/md5sum.txt" 2>/dev/null || true
 unsquashfs -d "$ROOT" "$WORK/filesystem.squashfs"
 rm -f "$WORK/filesystem.squashfs"
 
@@ -44,7 +45,11 @@ RESOLV_LINK=$(readlink "$ROOT/etc/resolv.conf" || true)
 cp --remove-destination /etc/resolv.conf "$ROOT/etc/resolv.conf"
 mkdir -p "$ROOT/tmp/helloos"
 cp -r "$REPO/install.sh" "$REPO/start-screen" "$REPO/config" "$ROOT/tmp/helloos/"
+# Don't let package scripts start services inside the image.
+printf '#!/bin/sh\nexit 101\n' > "$ROOT/usr/sbin/policy-rc.d"
+chmod 755 "$ROOT/usr/sbin/policy-rc.d"
 chroot "$ROOT" /bin/bash /tmp/helloos/install.sh --iso
+rm -f "$ROOT/usr/sbin/policy-rc.d"
 chroot "$ROOT" apt-get clean
 rm -rf "$ROOT/tmp/helloos" "$ROOT/var/lib/apt/lists/"*
 for m in dev/pts dev proc sys run; do umount -lf "$ROOT/$m"; done
@@ -55,17 +60,21 @@ mksquashfs "$ROOT" "$WORK/filesystem.squashfs" -comp xz -noappend
 du -sx --block-size=1 "$ROOT" | cut -f1 > "$WORK/filesystem.size"
 
 # Update checksums so the "check disc for defects" option does not report errors.
-for f in filesystem.squashfs filesystem.size; do
-    sum=$(md5sum "$WORK/$f" | cut -d' ' -f1)
-    sed -i "s|^[0-9a-f]*  \./casper/$f\$|$sum  ./casper/$f|" "$WORK/md5sum.txt"
-done
+MAP_MD5=()
+if [ -f "$WORK/md5sum.txt" ]; then
+    for f in filesystem.squashfs filesystem.size; do
+        sum=$(md5sum "$WORK/$f" | cut -d' ' -f1)
+        sed -i "s|^[0-9a-f]*  \./casper/$f\$|$sum  ./casper/$f|" "$WORK/md5sum.txt"
+    done
+    MAP_MD5=(-map "$WORK/md5sum.txt" /md5sum.txt)
+fi
 
 echo "==> Writing $ISO_OUT"
 rm -f "$ISO_OUT"
 xorriso -indev "$ISO_IN" -outdev "$ISO_OUT" \
     -map "$WORK/filesystem.squashfs" /casper/filesystem.squashfs \
     -map "$WORK/filesystem.size" /casper/filesystem.size \
-    -map "$WORK/md5sum.txt" /md5sum.txt \
+    "${MAP_MD5[@]}" \
     -boot_image any replay
 
 echo "Done: $ISO_OUT"
