@@ -1,0 +1,14 @@
+[Unit]
+Description=Senior OS: instalacja Google Chrome przy pierwszym uruchomieniu
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=!/usr/bin/google-chrome-stable
+
+[Service]
+Type=oneshot
+# Kilka prób, gdyby internet pojawił się chwilę później.
+ExecStart=/bin/bash -c 'for i in 1 2 3 4 5; do /opt/senior-os/konfiguracja/zainstaluj-chrome.sh && exit 0; sleep 60; done; exit 1'
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=multi-user.target

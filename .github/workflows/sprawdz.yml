@@ -1,0 +1,32 @@
+name: Sprawdzenie
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  sprawdz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skrypty (shellcheck)
+        run: shellcheck install.sh build-iso/build-iso.sh konfiguracja/*.sh
+
+      - name: Ekran startowy uruchamia się
+        run: |
+          pip install PyQt5
+          sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libegl1 libgl1
+          QT_QPA_PLATFORM=offscreen python3 -c "
+          import sys; sys.path.insert(0, 'ekran-startowy')
+          from PyQt5.QtWidgets import QApplication
+          import ekran_startowy as e
+          app = QApplication(sys.argv)
+          w = e.EkranStartowy(); w.resize(1366, 768); w.show(); app.processEvents()
+          w.grab().save('ekran-startowy.png'); print('OK')
+          "
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zrzut-ekranu
+          path: ekran-startowy.png

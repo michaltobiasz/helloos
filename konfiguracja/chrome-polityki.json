@@ -1,0 +1,13 @@
+{
+  "HomepageLocation": "https://www.google.pl",
+  "HomepageIsNewTabPage": false,
+  "ShowHomeButton": true,
+  "BookmarkBarEnabled": true,
+  "RestoreOnStartup": 4,
+  "RestoreOnStartupURLs": ["https://www.google.pl"],
+  "DefaultBrowserSettingEnabled": false,
+  "PromotionalTabsEnabled": false,
+  "MetricsReportingEnabled": false,
+  "ApplicationLocaleValue": "pl",
+  "SpellcheckLanguage": ["pl"]
+}
