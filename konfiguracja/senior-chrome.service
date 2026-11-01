@@ -3,6 +3,9 @@ Description=Senior OS: instalacja Google Chrome przy pierwszym uruchomieniu
 Wants=network-online.target
 After=network-online.target
 ConditionPathExists=!/usr/bin/google-chrome-stable
+# Uruchomienie z pendrive'a „na żywo” (boot=casper): nie pobieraj Chrome przy każdym
+# starcie — wystarczy wbudowane Chromium. Po instalacji na dysk Chrome zainstaluje się sam.
+ConditionKernelCommandLine=!boot=casper
 
 [Service]
 Type=oneshot
