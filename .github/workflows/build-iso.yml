@@ -52,7 +52,13 @@ jobs:
           [ -n "$VERSION" ] || { echo "No Linux Mint XFCE image found"; exit 1; }
           ISO="linuxmint-$VERSION-xfce-64bit.iso"
           echo "Linux Mint $VERSION"
-          curl -fL --retry 3 -o "$ISO" "$MIRROR/$VERSION/$ISO"
+          # Large download: HTTP/1.1, resume (-C -) after a dropped connection, several attempts.
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if curl --http1.1 -fL -C - --retry 5 --retry-all-errors --speed-limit 50000 --speed-time 60 \
+                    -o "$ISO" "$MIRROR/$VERSION/$ISO"; then break; fi
+            echo "Download interrupted (attempt $attempt), resuming…"; sleep 10
+            [ "$attempt" -lt 8 ] || exit 1
+          done
           curl -fsSL "$MIRROR/$VERSION/sha256sum.txt" | grep -E "[ *]${ISO}\$" | sha256sum -c -
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "iso=$ISO" >> "$GITHUB_OUTPUT"
